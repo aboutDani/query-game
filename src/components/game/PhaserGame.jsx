@@ -408,9 +408,9 @@ export default function PhaserGame() {
                             {/*<button onClick={() => initGame('Level5', 3)} variant="outline" className="w-full border-yellow-700 text-yellow-400 hover:text-yellow-300 hover:border-yellow-500 rounded-none py-4 text-sm">
                                 DEBUG: LIVELLO 5
                             </button>*/}
-                            <button onClick={() => initGame('Level9', 3)} variant="outline" className="w-full border-yellow-700 text-yellow-400 hover:text-yellow-300 hover:border-yellow-500 rounded-none py-4 text-sm">
+                            {/*<button onClick={() => initGame('Level9', 3)} variant="outline" className="w-full border-yellow-700 text-yellow-400 hover:text-yellow-300 hover:border-yellow-500 rounded-none py-4 text-sm">
                                 DEBUG: LIVELLO 9
-                            </button>
+                            </button>*/}
                             <button onClick={handleTutorial} variant="outline" className="w-full border-neutral-700 text-neutral-400 hover:text-white hover:border-white rounded-none py-6">
                                 TUTORIAL
                             </button>
