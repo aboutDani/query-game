@@ -322,7 +322,7 @@ export default function PhaserGame() {
                                         <Info className="w-5 h-5" /> ⚠️ PROSSIMO LIVELLO ⚠️
                                     </h3>
                                     <p className="text-yellow-300 text-lg font-black mb-3 drop-shadow-lg">
-                                        {uiState.nextLevel === 1 && "🔴 IL GLITCH SI RISVEGLIA"}
+                                        {uiState.nextLevel === 1 && "🔴 SI INIZIA: IL GLITCH SI RISVEGLIA"}
                                         {uiState.nextLevel === 2 && "🔫 TORRETTE DIFENSIVE"}
                                         {uiState.nextLevel === 3 && "⚡ ACCELERAZIONE TOTALE"}
                                         {uiState.nextLevel === 4 && "🌊 IL FLUSSO"}

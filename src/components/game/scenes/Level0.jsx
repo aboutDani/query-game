@@ -20,6 +20,9 @@ export default class Level0 extends Phaser.Scene {
         this.phase = 0; // 0: Single swipe, 0.5: Hold direction, 1: Wrap, 2: Rotation, 3: End
         this.hasTestedHold = false;
         this.currentRotation = 0;
+        this.rotationIntroActive = false;
+        this.rotationIntroFirstSpinDone = false;
+
         this.arrowIndicators = []; // Visual arrows for wrap-around
 
         this.cameras.main.setBackgroundColor('#0a0a0a');
@@ -39,37 +42,89 @@ export default class Level0 extends Phaser.Scene {
     }
 
     showTutorialText(text, duration = 4500) {
-        if (this.tutorialText) this.tutorialText.destroy();
-        this.tutorialText = this.add.text(this.scale.width/2, 80, text, {
+        
+        if (this.tutorialText) {
+            this.tutorialText.destroy();
+            this.tutorialText = null;
+        }
+
+
+        const paddingX = 18;
+        const paddingY = 12;
+
+        this.tutorialText = this.add.text(0, 0, text, {
             fontSize: '18px',
             fill: '#06b6d4',
             fontFamily: 'monospace',
             align: 'center',
             fontStyle: 'bold',
             backgroundColor: '#000000dd',
-            padding: { x: 12, y: 8 }
-        }).setOrigin(0.5).setDepth(100);
-        
+            padding: { x: paddingX, y: paddingY },
+            wordWrap: { width: Math.min(this.scale.width - 40, 520), useAdvancedWrap: true }
+        })
+        .setOrigin(0.5)
+        .setDepth(100)
+        .setScrollFactor(0); // ✅ resta “attaccato” allo schermo (camera space)
+
+        // ✅ posiziona sempre al centro in alto (ma dentro l’area visibile)
+        this.positionTutorialText();
+
         this.tweens.add({
             targets: this.tutorialText,
             alpha: { from: 0, to: 1 },
             duration: 300
         });
-        
+
+        // Se duration è 0 o null → NON auto-hide
+        if (duration && duration > 0) {
         this.time.delayedCall(duration, () => {
             if (this.tutorialText) {
-                this.tweens.add({
-                    targets: this.tutorialText,
-                    alpha: 0,
-                    duration: 300,
-                    onComplete: () => {
-                        if (this.tutorialText) this.tutorialText.destroy();
-                    }
-                });
+            this.tweens.add({
+                targets: this.tutorialText,
+                alpha: 0,
+                duration: 300,
+            onComplete: () => {
+            if (this.tutorialText) {
+                this.tutorialText.destroy();
+                this.tutorialText = null;
+            }
+            }
+            });
             }
         });
+        }
+
     }
-    
+
+    positionTutorialText() {
+        if (!this.tutorialText || !this.tutorialText.scene) return;
+
+        const w = this.scale.width;
+        const h = this.scale.height;
+
+        // Durante/ dopo rotazioni: mettilo al centro per evitare tagli ai bordi
+        const inRotationPhase = this.phase >= 2;
+
+        const x = w / 2;
+        const y = inRotationPhase ? (h / 2) : Math.max(90, h * 0.18);
+
+        this.tutorialText.setPosition(x, y);
+
+        // Contro-rotazione: testo sempre dritto
+        this.tutorialText.setRotation(-this.cameras.main.rotation);
+
+        // Se sei in fase rotazione, riduci un po' la larghezza effettiva (safe area)
+        // (così non viene “mangiato” dagli angoli durante la rotazione)
+        const wrapWidth = inRotationPhase ? Math.min(w * 0.70, 420) : Math.min(w - 40, 520);
+
+        // aggiorna solo se cambia (evita updateText continui e bug durante destroy)
+        if (this.tutorialText._lastWrapWidth !== wrapWidth) {
+        this.tutorialText.setWordWrapWidth(wrapWidth, true);
+        this.tutorialText._lastWrapWidth = wrapWidth;
+        }
+
+    }
+
     shutdown() {
         if (this.tutorialText) {
             this.tutorialText.destroy();
@@ -330,9 +385,9 @@ export default class Level0 extends Phaser.Scene {
                 } else {
                     // Phase 0.5+: Continuous movement
                     if (Math.abs(dx) > Math.abs(dy)) {
-                        this.setDirection(dx > 0 ? 1 : -1, 0);
+                        this.handleInput(dx > 0 ? 1 : -1, 0);
                     } else {
-                        this.setDirection(0, dy > 0 ? 1 : -1);
+                        this.handleInput(0, dy > 0 ? 1 : -1);
                     }
                 }
             }
@@ -384,9 +439,9 @@ export default class Level0 extends Phaser.Scene {
             const timeLeft = Math.max(0, Math.ceil((this.nextRotationTime - time) / 1000));
             this.updateUI(timeLeft);
             
-            // Keep tutorial text upright during rotation
+            // ✅ Tutorial text sempre in screen-space: centrato e dritto
             if (this.tutorialText) {
-                this.tutorialText.setRotation(-this.cameras.main.rotation);
+                this.positionTutorialText();
             }
         }
     }
@@ -442,6 +497,25 @@ export default class Level0 extends Phaser.Scene {
             duration: 1000,
             ease: 'Cubic.easeOut'
         });
+        if (this.rotationIntroActive && !this.rotationIntroFirstSpinDone) {
+            this.rotationIntroFirstSpinDone = true;
+            this.rotationIntroActive = false;
+
+            // Fade-out immediato quando parte la prima rotazione
+            if (this.tutorialText) {
+                this.tweens.add({
+                targets: this.tutorialText,
+                alpha: 0,
+                duration: 250,
+                onComplete: () => {
+                    if (this.tutorialText) {
+                    this.tutorialText.destroy();
+                    this.tutorialText = null;
+                    }
+                }
+                });
+            }
+        }
         this.relocateEndPoint();
     }
 
@@ -517,7 +591,7 @@ export default class Level0 extends Phaser.Scene {
             this.phase = 0.5;
             this.cameras.main.flash(300, 0, 255, 100);
             this.clearArrowIndicators();
-            this.showTutorialText("✅ PERFETTO! MOVIMENTO APPRESO\n\n🎯 TIENI PREMUTO → ← ↑ ↓\nPER MOVIMENTO CONTINUO!", 8000);
+            this.showTutorialText("✅ PERFETTO! In alcuni livelli\n\n🎯 MUOVI → ← ↑ ↓\nPER MOVIMENTO CONTINUO!", 8000);
             this.showDirectionalArrow('all');
             this.relocateEndPoint();
         } else if (this.phase === 0.5) {
@@ -531,7 +605,11 @@ export default class Level0 extends Phaser.Scene {
             this.phase = 2;
             this.cameras.main.flash(300, 0, 255, 100);
             this.clearArrowIndicators();
-            this.showTutorialText("✅ OTTIMO! WRAP-AROUND PADRONEGGIATO\n\n🔄 ORA IL MONDO RUOTERÀ\nSEGUI IL TIMER E ADATTATI!", 8000);
+            this.showTutorialText(
+                  "✅ OTTIMO! WRAP-AROUND PADRONEGGIATO\n\n🔄 ORA IL MONDO RUOTERÀ\nSEGUI IL TIMER E ADATTATI!", 0 // <- resta finché non lo togliamo noi
+            );
+            this.rotationIntroActive = true;
+            this.rotationIntroFirstSpinDone = false;
             this.relocateEndPoint();
         } else if (this.phase === 2) {
             this.phase = 3;
