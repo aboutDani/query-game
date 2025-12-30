@@ -32,6 +32,7 @@ Il progetto nasce come esperienza QR / interattiva, ma può essere esteso facilm
 
 ## 📁 Struttura del progetto
 
+```text
 src/
 ├─ components/
 │ └─ game/
